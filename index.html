@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Badminton Scoreboard</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:          #0d1117;
+      --surface:     #161b22;
+      --surface2:    #1e2733;
+      --border:      rgba(255,255,255,0.08);
+      --border-md:   rgba(255,255,255,0.14);
+      --text-1:      #f0f6fc;
+      --text-2:      #8b949e;
+      --text-3:      #484f58;
+      --blue:        #388bfd;
+      --blue-dim:    rgba(56,139,253,0.15);
+      --blue-border: rgba(56,139,253,0.4);
+      --coral:       #f78166;
+      --coral-dim:   rgba(247,129,102,0.15);
+      --coral-border:rgba(247,129,102,0.4);
+      --gold:        #e3b341;
+      --radius-sm:   6px;
+      --radius-md:   10px;
+      --radius-lg:   16px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text-1);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 2rem 1rem 3rem;
+    }
+
+    /* ─── Header ─── */
+    header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    .shuttle-icon { font-size: 2rem; display: block; margin-bottom: 0.5rem; }
+    h1 {
+      font-size: 1rem;
+      font-weight: 600;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--text-2);
+    }
+
+    /* ─── Set dots ─── */
+    .set-dots {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 0.75rem;
+    }
+    .dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: var(--surface2);
+      border: 1px solid var(--border-md);
+      transition: background 0.25s, border-color 0.25s;
+    }
+    .dot.blue  { background: var(--blue);  border-color: var(--blue);  }
+    .dot.coral { background: var(--coral); border-color: var(--coral); }
+
+    /* ─── Winner Banner ─── */
+    .winner-banner {
+      width: 100%;
+      max-width: 640px;
+      padding: 0.8rem 1.25rem;
+      border-radius: var(--radius-md);
+      font-size: 1rem;
+      font-weight: 600;
+      text-align: center;
+      margin-bottom: 1.25rem;
+      display: none;
+      animation: fadeIn 0.4s ease;
+    }
+    .winner-banner.show { display: block; }
+    .winner-banner.left  { background: var(--blue-dim);  border: 1px solid var(--blue-border);  color: var(--blue);  }
+    .winner-banner.right { background: var(--coral-dim); border: 1px solid var(--coral-border); color: var(--coral); }
+
+    /* ─── Scoreboard ─── */
+    .scoreboard {
+      display: grid;
+      grid-template-columns: 1fr 64px 1fr;
+      align-items: stretch;
+      width: 100%;
+      max-width: 640px;
+      border: 1px solid var(--border-md);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      margin-bottom: 1.25rem;
+    }
+
+    .player {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      padding: 1.5rem 1rem 1.25rem;
+      background: var(--surface);
+    }
+    .player.left  { border-right: 1px solid var(--border); }
+    .player.right { border-left: 1px solid var(--border); }
+
+    .serve-indicator {
+      font-size: 1.2rem;
+      min-height: 1.5rem;
+      opacity: 0;
+      transition: opacity 0.25s;
+    }
+    .player.serving .serve-indicator { opacity: 1; }
+
+    .player-name {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-2);
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      border-bottom: 1px dashed var(--border-md);
+      padding-bottom: 2px;
+      text-align: center;
+      max-width: 100%;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      transition: color 0.15s;
+    }
+    .player-name:hover { color: var(--text-1); }
+
+    .score {
+      font-size: 5.5rem;
+      font-weight: 700;
+      line-height: 1;
+      letter-spacing: -0.03em;
+      transition: transform 0.12s;
+    }
+    .player.left  .score { color: var(--blue);  }
+    .player.right .score { color: var(--coral); }
+    .score.bump { transform: scale(1.18); }
+
+    .set-history-scores {
+      display: flex;
+      gap: 6px;
+      min-height: 22px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .set-badge {
+      font-size: 0.7rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: var(--surface2);
+      color: var(--text-2);
+      border: 1px solid var(--border);
+    }
+    .set-badge.winner { background: var(--blue-dim); color: var(--blue); border-color: var(--blue-border); }
+    .player.right .set-badge.winner { background: var(--coral-dim); color: var(--coral); border-color: var(--coral-border); }
+
+    .btn-score {
+      width: 48px; height: 48px;
+      border-radius: 50%;
+      border: 1px solid var(--border-md);
+      background: var(--surface2);
+      color: var(--text-1);
+      font-size: 1.5rem;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s, transform 0.1s;
+    }
+    .btn-score:hover { background: var(--border); }
+    .btn-score:active { transform: scale(0.9); }
+    .btn-score.add-left  { background: var(--blue-dim);  border-color: var(--blue-border);  color: var(--blue);  font-size: 1.8rem; }
+    .btn-score.add-right { background: var(--coral-dim); border-color: var(--coral-border); color: var(--coral); font-size: 1.8rem; }
+    .btn-score.add-left:hover  { background: rgba(56,139,253,0.28); }
+    .btn-score.add-right:hover { background: rgba(247,129,102,0.28); }
+
+    /* ─── Middle divider ─── */
+    .divider {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 8px;
+      background: var(--bg);
+      border-left: 1px solid var(--border);
+      border-right: 1px solid var(--border);
+      padding: 8px 4px;
+    }
+    .vs-label {
+      font-size: 0.65rem; font-weight: 700;
+      letter-spacing: 0.1em;
+      color: var(--text-3);
+    }
+    .set-label {
+      font-size: 0.65rem; font-weight: 600;
+      color: var(--text-2);
+      background: var(--surface2);
+      border: 1px solid var(--border-md);
+      border-radius: 4px;
+      padding: 3px 6px;
+      text-align: center;
+    }
+
+    /* ─── Controls ─── */
+    .controls {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-bottom: 1.5rem;
+    }
+    .ctrl {
+      font-size: 0.78rem;
+      font-weight: 500;
+      padding: 7px 16px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-md);
+      background: var(--surface);
+      color: var(--text-2);
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .ctrl:hover { background: var(--surface2); color: var(--text-1); }
+    .ctrl.danger { color: #f85149; border-color: rgba(248,81,73,0.35); }
+    .ctrl.danger:hover { background: rgba(248,81,73,0.1); }
+
+    /* ─── History table ─── */
+    .history-box {
+      width: 100%;
+      max-width: 640px;
+      border: 1px solid var(--border-md);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+    }
+    .history-header {
+      padding: 9px 16px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-3);
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+    }
+    .history-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 16px;
+      font-size: 0.82rem;
+      color: var(--text-2);
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
+    }
+    .history-row:last-child { border-bottom: none; }
+    .history-row strong { color: var(--text-1); }
+    .win-tag {
+      margin-left: auto;
+      font-size: 0.68rem;
+      font-weight: 700;
+      padding: 3px 9px;
+      border-radius: 4px;
+    }
+    .win-tag.left  { background: var(--blue-dim);  color: var(--blue);  border: 1px solid var(--blue-border); }
+    .win-tag.right { background: var(--coral-dim); color: var(--coral); border: 1px solid var(--coral-border); }
+    .no-history {
+      padding: 1.25rem;
+      text-align: center;
+      font-size: 0.82rem;
+      color: var(--text-3);
+      background: var(--bg);
+    }
+
+    /* ─── Keyboard hint ─── */
+    .key-hint {
+      margin-top: 1.5rem;
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .hint {
+      font-size: 0.72rem;
+      color: var(--text-3);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    kbd {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 4px;
+      border: 1px solid var(--border-md);
+      background: var(--surface);
+      font-size: 0.68rem;
+      font-family: monospace;
+      color: var(--text-2);
+    }
+
+    /* ─── Name editor modal ─── */
+    .backdrop {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.55);
+      z-index: 100;
+    }
+    .modal {
+      display: none;
+      position: fixed;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 101;
+      background: var(--surface);
+      border: 1px solid var(--border-md);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem;
+      min-width: 280px;
+      animation: fadeIn 0.2s ease;
+    }
+    .modal h3 { font-size: 0.95rem; font-weight: 600; margin-bottom: 1rem; color: var(--text-1); }
+    .modal input {
+      width: 100%;
+      padding: 9px 12px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-md);
+      background: var(--bg);
+      color: var(--text-1);
+      font-size: 0.9rem;
+      outline: none;
+      margin-bottom: 1rem;
+      transition: border-color 0.15s;
+    }
+    .modal input:focus { border-color: var(--blue); }
+    .modal-btns { display: flex; gap: 8px; justify-content: flex-end; }
+    .modal-btns .ctrl { font-size: 0.82rem; }
+    .modal-btns .ctrl.primary { color: var(--blue); border-color: var(--blue-border); background: var(--blue-dim); }
+    .modal-btns .ctrl.primary:hover { background: rgba(56,139,253,0.25); }
+
+    @keyframes fadeIn { from { opacity: 0; transform: translate(-50%, -48%); } to { opacity: 1; transform: translate(-50%, -50%); } }
+
+    @media (max-width: 480px) {
+      .score { font-size: 4rem; }
+      .btn-score { width: 42px; height: 42px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <span class="shuttle-icon">🏸</span>
+  <h1>Badminton Scoreboard</h1>
+  <div class="set-dots" id="set-dots"></div>
+</header>
+
+<div class="winner-banner" id="winner-banner"></div>
+
+<div class="scoreboard">
+  <!-- Left player -->
+  <div class="player left serving" id="side-left">
+    <span class="serve-indicator">🏸</span>
+    <span class="player-name" id="name-left" title="Click to rename">Player 1</span>
+    <span class="score" id="score-left">0</span>
+    <div class="set-history-scores" id="sets-left"></div>
+    <button class="btn-score add-left" onclick="addPoint('left')" title="Point for Player 1 [Q]">+</button>
+    <button class="btn-score"          onclick="removePoint('left')"  title="Undo point [A]" style="font-size:1.2rem;">−</button>
+  </div>
+
+  <!-- Divider -->
+  <div class="divider">
+    <span class="vs-label">VS</span>
+    <span class="set-label" id="set-label">Set&nbsp;1</span>
+  </div>
+
+  <!-- Right player -->
+  <div class="player right" id="side-right">
+    <span class="serve-indicator">🏸</span>
+    <span class="player-name" id="name-right" title="Click to rename">Player 2</span>
+    <span class="score" id="score-right">0</span>
+    <div class="set-history-scores" id="sets-right"></div>
+    <button class="btn-score add-right" onclick="addPoint('right')" title="Point for Player 2 [P]">+</button>
+    <button class="btn-score"           onclick="removePoint('right')"  title="Undo point [L]" style="font-size:1.2rem;">−</button>
+  </div>
+</div>
+
+<div class="controls">
+  <button class="ctrl" onclick="newSet()">End set early</button>
+  <button class="ctrl danger" onclick="resetMatch()">Reset match</button>
+</div>
+
+<div class="history-box">
+  <div class="history-header">Set history</div>
+  <div id="history-body">
+    <div class="no-history">No completed sets yet</div>
+  </div>
+</div>
+
+<div class="key-hint">
+  <span class="hint"><kbd>Q</kbd> Point — left</span>
+  <span class="hint"><kbd>A</kbd> Undo — left</span>
+  <span class="hint"><kbd>P</kbd> Point — right</span>
+  <span class="hint"><kbd>L</kbd> Undo — right</span>
+</div>
+
+<!-- Name editor -->
+<div class="backdrop" id="backdrop" onclick="closeModal()"></div>
+<div class="modal" id="modal">
+  <h3>Edit player name</h3>
+  <input type="text" id="name-input" maxlength="24" placeholder="Enter name..." />
+  <div class="modal-btns">
+    <button class="ctrl" onclick="closeModal()">Cancel</button>
+    <button class="ctrl primary" onclick="saveName()">Save</button>
+  </div>
+</div>
+
+<script>
+  // ── Config ──────────────────────────────────────────────────────
+  const MAX_SETS    = 3;
+  const WIN_SCORE   = 21;
+  const MAX_SCORE   = 30;
+  const SETS_NEEDED = Math.ceil(MAX_SETS / 2);
+
+  // ── State ────────────────────────────────────────────────────────
+  let state = loadState() || defaultState();
+
+  function defaultState() {
+    return {
+      names:        { left: 'Player 1', right: 'Player 2' },
+      scores:       { left: 0, right: 0 },
+      sets:         { left: 0, right: 0 },
+      setHistory:   [],
+      currentSet:   1,
+      server:       'left',
+      matchWinner:  null,
+      editTarget:   null
+    };
+  }
+
+  function loadState() {
+    try {
+      const raw = localStorage.getItem('badminton_state');
+      return raw ? JSON.parse(raw) : null;
+    } catch(e) { return null; }
+  }
+
+  function saveState() {
+    try { localStorage.setItem('badminton_state', JSON.stringify(state)); } catch(e) {}
+  }
+
+  // ── Scoring ──────────────────────────────────────────────────────
+  function addPoint(side) {
+    if (state.matchWinner) return;
+    state.scores[side]++;
+    state.server = side;
+    bump('score-' + side);
+    checkSetWin();
+    render();
+    saveState();
+  }
+
+  function removePoint(side) {
+    if (state.matchWinner) return;
+    if (state.scores[side] > 0) {
+      state.scores[side]--;
+      render();
+      saveState();
+    }
+  }
+
+  function checkSetWin() {
+    const w = setWinner(state.scores.left, state.scores.right);
+    if (w) finishSet(w);
+  }
+
+  function setWinner(l, r) {
+    if (l >= WIN_SCORE && l - r >= 2) return 'left';
+    if (r >= WIN_SCORE && r - l >= 2) return 'right';
+    if (l >= MAX_SCORE) return 'left';
+    if (r >= MAX_SCORE) return 'right';
+    return null;
+  }
+
+  function finishSet(winner) {
+    state.setHistory.push({
+      set: state.currentSet,
+      left:  state.scores.left,
+      right: state.scores.right,
+      winner
+    });
+    state.sets[winner]++;
+    state.scores  = { left: 0, right: 0 };
+    state.currentSet++;
+    if (state.sets[winner] >= SETS_NEEDED) state.matchWinner = winner;
+  }
+
+  function newSet() {
+    if (state.matchWinner) return;
+    const { left, right } = state.scores;
+    if (left === 0 && right === 0) return;
+    finishSet(left >= right ? 'left' : 'right');
+    render();
+    saveState();
+  }
+
+  function resetMatch() {
+    state = defaultState();
+    state.names = { left: state.names.left, right: state.names.right };
+    state = defaultState();
+    render();
+    try { localStorage.removeItem('badminton_state'); } catch(e) {}
+  }
+
+  // ── Name editing ─────────────────────────────────────────────────
+  document.getElementById('name-left').addEventListener('click',  () => openModal('left'));
+  document.getElementById('name-right').addEventListener('click', () => openModal('right'));
+
+  function openModal(side) {
+    state.editTarget = side;
+    document.getElementById('name-input').value = state.names[side];
+    document.getElementById('backdrop').style.display = 'block';
+    document.getElementById('modal').style.display    = 'block';
+    setTimeout(() => document.getElementById('name-input').select(), 30);
+  }
+
+  function closeModal() {
+    document.getElementById('backdrop').style.display = 'none';
+    document.getElementById('modal').style.display    = 'none';
+    state.editTarget = null;
+  }
+
+  function saveName() {
+    const val = document.getElementById('name-input').value.trim();
+    if (val && state.editTarget) { state.names[state.editTarget] = val; render(); saveState(); }
+    closeModal();
+  }
+
+  document.getElementById('name-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter')  saveName();
+    if (e.key === 'Escape') closeModal();
+  });
+
+  // ── Keyboard shortcuts ───────────────────────────────────────────
+  document.addEventListener('keydown', e => {
+    if (document.getElementById('modal').style.display === 'block') return;
+    const k = e.key.toLowerCase();
+    if (k === 'q') addPoint('left');
+    if (k === 'a') removePoint('left');
+    if (k === 'p') addPoint('right');
+    if (k === 'l') removePoint('right');
+  });
+
+  // ── Bump animation ────────────────────────────────────────────────
+  function bump(id) {
+    const el = document.getElementById(id);
+    el.classList.add('bump');
+    setTimeout(() => el.classList.remove('bump'), 180);
+  }
+
+  // ── Render ────────────────────────────────────────────────────────
+  function render() {
+    document.getElementById('score-left').textContent  = state.scores.left;
+    document.getElementById('score-right').textContent = state.scores.right;
+    document.getElementById('name-left').textContent  = state.names.left;
+    document.getElementById('name-right').textContent = state.names.right;
+    document.getElementById('set-label').textContent = 'Set ' + Math.min(state.currentSet, MAX_SETS);
+
+    document.getElementById('side-left').classList.toggle('serving',  state.server === 'left');
+    document.getElementById('side-right').classList.toggle('serving', state.server === 'right');
+
+    ['left', 'right'].forEach(side => {
+      const opp = side === 'left' ? 'right' : 'left';
+      document.getElementById('sets-' + side).innerHTML =
+        state.setHistory.map(h =>
+          `<span class="set-badge ${h[side] > h[opp] ? 'winner' : ''}">${h[side]}</span>`
+        ).join('');
+    });
+
+    document.getElementById('set-dots').innerHTML =
+      Array.from({ length: SETS_NEEDED }, (_, i) => {
+        const h = state.setHistory[i];
+        const cls = h ? (h.winner === 'left' ? 'blue' : 'coral') : '';
+        return `<div class="dot ${cls}"></div>`;
+      }).join('');
+
+    const banner = document.getElementById('winner-banner');
+    if (state.matchWinner) {
+      banner.textContent = `🏆 ${state.names[state.matchWinner]} wins the match!`;
+      banner.className = `winner-banner show ${state.matchWinner}`;
+    } else {
+      banner.className = 'winner-banner';
+      banner.textContent = '';
+    }
+
+    const body = document.getElementById('history-body');
+    if (!state.setHistory.length) {
+      body.innerHTML = '<div class="no-history">No completed sets yet</div>';
+    } else {
+      body.innerHTML = state.setHistory.map(h =>
+        `<div class="history-row">
+          <span style="min-width:42px;color:var(--text-3);font-size:0.72rem;">Set ${h.set}</span>
+          <strong>${state.names.left}</strong>
+          <span>${h.left}</span>
+          <span style="color:var(--text-3)">–</span>
+          <span>${h.right}</span>
+          <strong>${state.names.right}</strong>
+          <span class="win-tag ${h.winner}">${state.names[h.winner]}</span>
+        </div>`
+      ).join('');
+    }
+  }
+
+  render();
+</script>
+</body>
+</html>
